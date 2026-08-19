@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { predictAnalytes } from '../../services/predictionEngine';
+import { PANEL_10_KEYS, PANEL_14_KEYS, predictAnalytes } from '../../services/predictionEngine';
 import { StatusBadge, PanelBadge } from '../common/Badge';
 import { mockApi } from '../../services/mockApi';
 import { useAuth } from '../../context/AuthContext';
@@ -14,13 +14,23 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const panelType = formData.panelType || '10-panel';
-  const predictedList = predictAnalytes(panelType, formData.rgbReadings || {});
+  const analyteKeys = panelType === '14-panel' ? PANEL_14_KEYS : PANEL_10_KEYS;
+  const hasCompleteReadings = analyteKeys.every((key) => {
+    const rgb = formData.rgbReadings?.[key];
+    return rgb && ['r', 'g', 'b'].every((channel) => Number.isFinite(Number(rgb[channel])));
+  });
+  const predictedList = hasCompleteReadings ? predictAnalytes(panelType, formData.rgbReadings || {}) : [];
 
   const hasAbnormal = predictedList.some(a => a.flag === 'abnormal');
   const hasTrace = predictedList.some(a => a.flag === 'trace');
   const overallFlag = hasAbnormal ? 'abnormal' : (hasTrace ? 'trace' : 'normal');
 
   const handleSubmit = async () => {
+    if (!hasCompleteReadings) {
+      addToast('Enter complete RGB readings before submitting.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const created = await mockApi.createTest({
@@ -52,9 +62,18 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
           Step 4: Live Prediction & Final Submission
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Review automated concentration predictions, add optional technician observations, and issue the report.
+          Review automated concentration predictions from the extracted RGB values, add optional technician observations, and issue the report.
         </p>
       </div>
+
+      {!hasCompleteReadings && (
+        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <p className="text-xs font-semibold">
+            RGB readings are incomplete. Go back and enter R, G, and B values for every reagent pad before prediction.
+          </p>
+        </div>
+      )}
 
       {/* Overview Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -145,6 +164,13 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
                   </td>
                 </tr>
               ))}
+              {predictedList.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                    No complete RGB readings available yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -176,7 +202,7 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
         </button>
         <button
           type="button"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !hasCompleteReadings}
           onClick={handleSubmit}
           className="flex items-center gap-2 px-7 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-lg shadow-teal-600/30 disabled:opacity-50 transition-all"
         >

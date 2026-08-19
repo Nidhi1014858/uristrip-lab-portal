@@ -1,15 +1,13 @@
 import React from 'react';
 import { Layers, Sparkles, CheckCircle } from 'lucide-react';
 import { STRIP_BRANDS } from '../../services/seedData';
-import { PANEL_10_KEYS, PANEL_14_KEYS, getSampleRGBReadings } from '../../services/predictionEngine';
+import { PANEL_10_KEYS, PANEL_14_KEYS } from '../../services/predictionEngine';
 
 export function StepStripSelection({ formData, updateFormData, onNext, onPrev }) {
   const handleSelectPanel = (panelType) => {
-    // When changing panel type, update RGB readings sample accordingly
-    const newRgb = getSampleRGBReadings(panelType, 'normal');
     updateFormData({
       panelType,
-      rgbReadings: newRgb
+      rgbReadings: {}
     });
   };
 

@@ -4,7 +4,6 @@ import { StepPatientDestination } from '../components/wizard/StepPatientDestinat
 import { StepStripSelection } from '../components/wizard/StepStripSelection';
 import { StepPadReading } from '../components/wizard/StepPadReading';
 import { StepReviewSubmit } from '../components/wizard/StepReviewSubmit';
-import { getSampleRGBReadings } from '../services/predictionEngine';
 import { mockApi } from '../services/mockApi';
 
 export function NewTestPage() {
@@ -19,8 +18,8 @@ export function NewTestPage() {
     reportDestination: 'Metropolis Healthcare',
     panelType: '10-panel',
     stripBrand: 'Siemens Multistix 10SG',
-    stripImageUrl: 'https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&q=80&w=400',
-    rgbReadings: getSampleRGBReadings('10-panel', 'normal'),
+    stripImageUrl: '',
+    rgbReadings: {},
     technicianNotes: ''
   });
 
@@ -53,7 +52,7 @@ export function NewTestPage() {
   const steps = [
     { num: 1, title: 'Patient & Destination' },
     { num: 2, title: 'Panel & Brand' },
-    { num: 3, title: 'Pad Scan & RGB' },
+    { num: 3, title: 'RGB Values' },
     { num: 4, title: 'Prediction & Submit' }
   ];
 
