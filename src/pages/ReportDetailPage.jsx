@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mockApi } from '../services/mockApi';
 import { StatusBadge, PanelBadge } from '../components/common/Badge';
@@ -13,7 +13,17 @@ import {
   Printer, 
   ArrowLeft, 
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Share2,
+  QrCode,
+  Copy,
+  CheckCheck,
+  X,
+  Lock,
+  Clock,
+  ExternalLink,
+  Wifi,
+  Zap
 } from 'lucide-react';
 
 export function ReportDetailPage() {
@@ -26,6 +36,7 @@ export function ReportDetailPage() {
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const fetchReport = async () => {
     try {
@@ -83,6 +94,14 @@ export function ReportDetailPage() {
           >
             <UserCheck className="w-4 h-4" />
             {isPendingReview ? 'Review Now' : 'Update Review Verdict'}
+          </button>
+
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-md shadow-violet-600/20 transition-all"
+          >
+            <Share2 className="w-4 h-4" />
+            Share to {test.reportDestination?.split(' ').slice(0, 2).join(' ') || 'Pathology'}
           </button>
 
           <button
@@ -332,6 +351,304 @@ export function ReportDetailPage() {
         test={test}
         onReviewSubmitted={handleReviewSubmitted}
       />
+
+      {/* Share Modal */}
+      <ShareReportModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        test={test}
+      />
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ShareReportModal — Mock share/export simulation
+───────────────────────────────────────────────────────────── */
+function ShareReportModal({ isOpen, onClose, test }) {
+  const [phase, setPhase] = useState('idle'); // idle | generating | ready
+  const [copied, setCopied] = useState(false);
+  const [countdown, setCountdown] = useState(null);
+  const countdownRef = useRef(null);
+
+  // Generate a fake secure link seeded from the test code
+  const fakeLink = test
+    ? `https://share.cura-dx.app/r/${test.testCode?.toLowerCase()}-${Math.abs(
+        test.testCode?.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7331
+      ).toString(36).slice(0, 8)}`
+    : '';
+
+  const destination = test?.reportDestination || 'Pathology Partner';
+
+  // Start generation flow when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPhase('generating');
+      setCopied(false);
+      setCountdown(null);
+      const t = setTimeout(() => {
+        setPhase('ready');
+        setCountdown(3600); // 1 hour expiry
+      }, 2200);
+      return () => clearTimeout(t);
+    } else {
+      setPhase('idle');
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    }
+  }, [isOpen]);
+
+  // Tick countdown when ready
+  useEffect(() => {
+    if (phase === 'ready') {
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(countdownRef.current);
+  }, [phase]);
+
+  const formatCountdown = (secs) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fakeLink).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.55)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+        style={{ animation: 'shareModalIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}
+      >
+        {/* Gradient header strip */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-violet-100 dark:bg-violet-950">
+              <Share2 className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h2 className="font-display font-bold text-slate-900 dark:text-white text-sm leading-tight">
+                Share Report
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Sending to <span className="font-bold text-violet-600 dark:text-violet-400">{destination}</span>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pb-6 space-y-5">
+
+          {/* Generating phase */}
+          {phase === 'generating' && (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <div className="relative">
+                {/* Outer ring pulse */}
+                <div className="absolute inset-0 rounded-full bg-violet-400/20 animate-ping" />
+                <div className="relative w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center">
+                  <Zap className="w-7 h-7 text-violet-500 animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-slate-900 dark:text-white text-sm">
+                  Generating secure share link…
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Encrypting report payload for {destination}
+                </p>
+              </div>
+              {/* Fake progress bar */}
+              <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                  style={{ animation: 'progressFill 2.2s ease-out forwards' }}
+                />
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <Wifi className="w-3.5 h-3.5" />
+                <span>Connecting to Cura Secure Share Gateway...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Ready phase */}
+          {phase === 'ready' && (
+            <>
+              {/* QR Code Panel */}
+              <div className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">
+                  <QrCode className="w-3.5 h-3.5" />
+                  Secure QR Code
+                </div>
+
+                {/* QR Code SVG simulation */}
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <MockQrCode seed={test?.testCode} />
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <Lock className="w-3.5 h-3.5" />
+                  End-to-end encrypted · TLS 1.3
+                </div>
+              </div>
+
+              {/* Link + copy row */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold block">
+                  Shareable Link
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-300 truncate">
+                    {fakeLink}
+                  </div>
+                  <button
+                    onClick={handleCopy}
+                    className={`flex items-center gap-1.5 shrink-0 px-3 py-2.5 rounded-xl font-bold text-[11px] transition-all ${
+                      copied
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-violet-600 hover:bg-violet-700 text-white'
+                    }`}
+                  >
+                    {copied ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Expiry countdown */}
+              <div className="flex items-center justify-between px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 font-medium">
+                  <Clock className="w-4 h-4" />
+                  Link expires in
+                </div>
+                <span className="font-mono font-bold text-sm text-amber-700 dark:text-amber-300">
+                  {formatCountdown(countdown ?? 3600)}
+                </span>
+              </div>
+
+              {/* Destination info */}
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800">
+                <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900">
+                  <Building2 className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{destination}</p>
+                  <p className="text-[10px] font-mono text-slate-400">Authorised recipient · read-only access</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-violet-400 shrink-0" />
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => { onClose(); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white font-bold text-sm shadow-lg shadow-violet-500/25 transition-all active:scale-[0.98]"
+              >
+                <Share2 className="w-4 h-4" />
+                Confirm &amp; Send to {destination.split(' ').slice(0, 2).join(' ')}
+              </button>
+
+              <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+                This is a simulation — no data is transmitted externally.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Keyframe styles injected inline */}
+      <style>{`
+        @keyframes shareModalIn {
+          from { opacity: 0; transform: scale(0.88) translateY(24px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes progressFill {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MockQrCode — deterministic QR-like pixel grid from a seed
+───────────────────────────────────────────────────────────── */
+function MockQrCode({ seed = 'CURA' }) {
+  const SIZE = 21;
+  const CELL = 7;
+
+  // Simple seeded pseudo-random grid
+  const grid = React.useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) {
+      h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+    }
+    const cells = [];
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        // Force finder patterns (corners)
+        const inFinder =
+          (r < 7 && c < 7) ||
+          (r < 7 && c >= SIZE - 7) ||
+          (r >= SIZE - 7 && c < 7);
+        if (inFinder) {
+          const lr = r < 7 ? r : r - (SIZE - 7);
+          const lc = c < 7 ? c : c - (SIZE - 7);
+          const onBorder = lr === 0 || lr === 6 || lc === 0 || lc === 6;
+          const onInner = lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4;
+          cells.push({ r, c, dark: onBorder || onInner });
+        } else {
+          h ^= h << 13; h ^= h >> 17; h ^= h << 5;
+          cells.push({ r, c, dark: (h & 1) === 1 });
+        }
+      }
+    }
+    return cells;
+  }, [seed]);
+
+  return (
+    <svg
+      width={SIZE * CELL}
+      height={SIZE * CELL}
+      viewBox={`0 0 ${SIZE * CELL} ${SIZE * CELL}`}
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ display: 'block' }}
+    >
+      <rect width={SIZE * CELL} height={SIZE * CELL} fill="white" />
+      {grid.map(({ r, c, dark }) =>
+        dark ? (
+          <rect
+            key={`${r}-${c}`}
+            x={c * CELL}
+            y={r * CELL}
+            width={CELL}
+            height={CELL}
+            rx={1}
+            fill="#1e1b4b"
+          />
+        ) : null
+      )}
+    </svg>
   );
 }
