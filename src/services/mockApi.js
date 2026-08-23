@@ -117,7 +117,7 @@ export const mockApi = {
     }
 
     // Roles are assigned at account creation and are intentionally immutable.
-    const { role: _ignoredRole, ...profileUpdates } = updates;
+    const { role: _ignoredRole, password: _ignoredPassword, ...profileUpdates } = updates;
     const updatedUser = {
       ...users[index],
       ...profileUpdates
@@ -146,6 +146,21 @@ export const mockApi = {
     }
 
     return updatedUser;
+  },
+
+  async changePassword(userId, currentPassword, newPassword) {
+    await delay();
+    const users = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    const index = users.findIndex((user) => user.id === userId);
+    if (index === -1) throw new Error('User not found');
+    if (users[index].password !== currentPassword) throw new Error('Current password is incorrect.');
+
+    users[index] = { ...users[index], password: newPassword };
+    localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+
+    const session = JSON.parse(localStorage.getItem(KEYS.SESSION) || '{}');
+    if (session.id === userId) localStorage.setItem(KEYS.SESSION, JSON.stringify(users[index]));
+    return users[index];
   },
 
   // --- TESTS ---

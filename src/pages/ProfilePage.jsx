@@ -5,19 +5,22 @@ import { User, Mail, Lock, ShieldCheck, Building2, Upload, Save } from 'lucide-r
 import { Avatar } from '../components/common/Avatar';
 
 export function ProfilePage() {
-  const { user, updateUserProfile } = useAuth();
+  const { user, updateUserProfile, changePassword } = useAuth();
   const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    password: user?.password || '',
     designation: user?.designation || '',
     department: user?.department || 'Point-of-Care Testing (POCT)',
     photoUrl: user?.photoUrl || null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -55,6 +58,26 @@ export function ProfilePage() {
       addToast(err.message || 'Failed to update profile', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New password and confirmation must match.');
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordOpen(false);
+      addToast('Password updated successfully.', 'success');
+    } catch (err) {
+      setPasswordError(err.message || 'Unable to update password.');
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -150,18 +173,6 @@ export function ProfilePage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" /> Account Password
-            </label>
-            <input
-              type="password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
         </div>
 
         {/* Submit */}
@@ -176,6 +187,20 @@ export function ProfilePage() {
           </button>
         </div>
       </form>
+
+      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div><h2 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2"><Lock className="w-4 h-4 text-teal-600" />Password</h2><p className="text-xs text-slate-500 mt-1">Change your password through a separate security action.</p></div>
+          <button type="button" onClick={() => { setPasswordOpen((open) => !open); setPasswordError(''); }} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-teal-50 dark:hover:bg-teal-950">{passwordOpen ? 'Cancel' : 'Change Password'}</button>
+        </div>
+        {passwordOpen && <form onSubmit={handlePasswordSubmit} className="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[['currentPassword', 'Current password'], ['newPassword', 'New password'], ['confirmPassword', 'Confirm new password']].map(([field, label]) => <div key={field}><label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{label}</label><input type="password" required value={passwordData[field]} onChange={(e) => setPasswordData({ ...passwordData, [field]: e.target.value })} className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500" /></div>)}
+          </div>
+          {passwordError && <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{passwordError}</p>}
+          <div className="flex justify-end"><button type="submit" disabled={isChangingPassword} className="px-5 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold disabled:opacity-50">{isChangingPassword ? 'Updating Password...' : 'Update Password'}</button></div>
+        </form>}
+      </section>
     </div>
   );
 }

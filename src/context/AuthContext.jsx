@@ -55,6 +55,13 @@ export function AuthProvider({ children }) {
     return updated;
   };
 
+  const changePassword = async (currentPassword, newPassword) => {
+    if (!user) return;
+    const updated = await mockApi.changePassword(user.id, currentPassword, newPassword);
+    setUser(updated);
+    return updated;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -64,6 +71,7 @@ export function AuthProvider({ children }) {
         signup,
         logout,
         updateUserProfile,
+        changePassword,
         isTechnician: user?.role === 'Technician',
         isClinician: user?.role === 'Clinician'
       }}
