@@ -22,6 +22,15 @@ function initializeStorage() {
   if (!localStorage.getItem(KEYS.TESTS)) {
     localStorage.setItem(KEYS.TESTS, JSON.stringify(MOCK_TESTS));
   }
+  // Backfill traceability fields for existing demo/local records.
+  const tests = JSON.parse(localStorage.getItem(KEYS.TESTS) || '[]');
+  const enriched = tests.map((test, index) => test.stripBatch ? test : ({
+    ...test,
+    stripBatch: `CUR-${test.stripBrand?.includes('Cura') ? '14' : '10'}-${String(2401 + (index % 3)).padStart(4, '0')}`,
+    manufactureDate: index === 3 ? '2025-06-01' : '2026-05-01',
+    expiryDate: index === 3 ? '2026-07-31' : '2027-05-01'
+  }));
+  localStorage.setItem(KEYS.TESTS, JSON.stringify(enriched));
 }
 
 // Auto-initialize
@@ -31,7 +40,7 @@ const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const mockApi = {
   // --- AUTH & USER PROFILE ---
-  async login(email, password, role) {
+  async login(email, password) {
     await delay();
     const users = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -43,10 +52,9 @@ export const mockApi = {
       throw new Error('Invalid password.');
     }
 
-    // Allow user to switch active role for demo testing if specified
-    const activeUser = { ...user, role: role || user.role };
-    localStorage.setItem(KEYS.SESSION, JSON.stringify(activeUser));
-    return activeUser;
+    // The account record is the sole authority for its role.
+    localStorage.setItem(KEYS.SESSION, JSON.stringify(user));
+    return user;
   },
 
   async signup({ name, email, password, role, designation, department }) {
@@ -89,7 +97,15 @@ export const mockApi = {
       localStorage.setItem(KEYS.SESSION, JSON.stringify(defaultUser));
       return defaultUser;
     }
-    return JSON.parse(session);
+    const sessionUser = JSON.parse(session);
+    const users = JSON.parse(localStorage.getItem(KEYS.USERS) || '[]');
+    // Refresh the session from its account record so a stale demo session cannot override role.
+    const account = users.find((user) => user.id === sessionUser.id || user.email === sessionUser.email);
+    if (account) {
+      localStorage.setItem(KEYS.SESSION, JSON.stringify(account));
+      return account;
+    }
+    return sessionUser;
   },
 
   async updateProfile(userId, updates) {
@@ -100,13 +116,28 @@ export const mockApi = {
       throw new Error('User not found');
     }
 
+    // Roles are assigned at account creation and are intentionally immutable.
+    const { role: _ignoredRole, ...profileUpdates } = updates;
     const updatedUser = {
       ...users[index],
-      ...updates
+      ...profileUpdates
     };
 
     users[index] = updatedUser;
     localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+
+    // Attribution avatars are stored with test records for display; keep them in sync
+    // when the account photo is changed or removed.
+    if (Object.prototype.hasOwnProperty.call(profileUpdates, 'photoUrl')) {
+      const tests = JSON.parse(localStorage.getItem(KEYS.TESTS) || '[]').map((test) => ({
+        ...test,
+        submittedByPhotoUrl: test.submittedBy === updatedUser.name ? updatedUser.photoUrl : test.submittedByPhotoUrl,
+        clinicianReview: test.clinicianReview?.reviewedBy === updatedUser.name
+          ? { ...test.clinicianReview, reviewerPhotoUrl: updatedUser.photoUrl }
+          : test.clinicianReview
+      }));
+      localStorage.setItem(KEYS.TESTS, JSON.stringify(tests));
+    }
 
     // Update current session if matching
     const currentSession = JSON.parse(localStorage.getItem(KEYS.SESSION) || '{}');
@@ -128,7 +159,8 @@ export const mockApi = {
         t.testCode.toLowerCase().includes(q) ||
         t.patientName.toLowerCase().includes(q) ||
         t.patientCode.toLowerCase().includes(q) ||
-        t.reportDestination.toLowerCase().includes(q)
+        t.reportDestination.toLowerCase().includes(q) ||
+        t.stripBatch?.toLowerCase().includes(q)
       );
     }
 
@@ -162,6 +194,16 @@ export const mockApi = {
 
   async createTest(testData) {
     await delay();
+    const today = new Date().toISOString().slice(0, 10);
+    if (!testData.stripBatch || !testData.manufactureDate || !testData.expiryDate) {
+      throw new Error('Strip batch number, manufacture date, and expiry date are required.');
+    }
+    if (testData.expiryDate < today) {
+      throw new Error(`This strip batch expired on ${testData.expiryDate} — testing with an expired strip may produce unreliable results. Submission blocked.`);
+    }
+    if (testData.manufactureDate > today || testData.manufactureDate > testData.expiryDate) {
+      throw new Error('Manufacture date must not be in the future or after the expiry date.');
+    }
     const tests = JSON.parse(localStorage.getItem(KEYS.TESTS) || '[]');
 
     // Calculate overall status based on analyte flags
@@ -198,7 +240,7 @@ export const mockApi = {
     return newTest;
   },
 
-  async updateClinicianReview(testId, { status, notes, reviewerName }) {
+  async updateClinicianReview(testId, { status, notes, reviewerName, reviewerPhotoUrl }) {
     await delay();
     const tests = JSON.parse(localStorage.getItem(KEYS.TESTS) || '[]');
     const index = tests.findIndex(t => t.id === testId);
@@ -211,6 +253,7 @@ export const mockApi = {
       reviewed: true,
       status, // 'approved' | 'flagged_retest'
       reviewedBy: reviewerName || 'Dr. Reviewer',
+      reviewerPhotoUrl: reviewerPhotoUrl || null,
       reviewedAt: now,
       notes: notes || ''
     };
@@ -227,6 +270,18 @@ export const mockApi = {
     tests[index] = test;
     localStorage.setItem(KEYS.TESTS, JSON.stringify(tests));
     return test;
+  },
+
+  async getBatchSummary(batchNumber) {
+    await delay();
+    const normalised = batchNumber.trim().toLowerCase();
+    const tests = JSON.parse(localStorage.getItem(KEYS.TESTS) || '[]').filter((test) => test.stripBatch?.toLowerCase() === normalised);
+    if (!tests.length) return null;
+    const batch = tests[0];
+    const expiry = batch.expiryDate ? new Date(`${batch.expiryDate}T23:59:59`) : null;
+    const daysUntilExpiry = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
+    const status = !expiry ? 'Unknown' : daysUntilExpiry < 0 ? 'Expired' : daysUntilExpiry <= 7 ? 'Expiring soon' : 'Active';
+    return { batchNumber: batch.stripBatch, manufactureDate: batch.manufactureDate, expiryDate: batch.expiryDate, stripBrand: batch.stripBrand, status, tests };
   },
 
   // --- PATIENTS ---

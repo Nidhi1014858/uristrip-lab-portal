@@ -31,7 +31,7 @@ export function Header({ pendingCount = 0 }) {
         </span>
 
         {/* Pending Reviews Notification Icon */}
-        <button
+        {user?.role === 'Clinician' && <button
           onClick={() => navigate('/review-queue')}
           title="Review Queue"
           className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -40,7 +40,7 @@ export function Header({ pendingCount = 0 }) {
           {pendingCount > 0 && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
           )}
-        </button>
+        </button>}
 
         {/* Theme Toggle Button */}
         <button
@@ -56,13 +56,13 @@ export function Header({ pendingCount = 0 }) {
         </button>
 
         {/* New Test Action Button */}
-        <button
+        {user?.role === 'Technician' && <button
           onClick={() => navigate('/new-test')}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs shadow-md shadow-teal-600/20 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden md:inline">New Test</span>
-        </button>
+        </button>}
       </div>
     </header>
   );

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { BrandLogo } from '../components/common/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { LogIn, Sparkles, UserCheck, ShieldCheck } from 'lucide-react';
+import { LogIn, Sparkles } from 'lucide-react';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -12,15 +12,14 @@ export function LoginPage() {
 
   const [email, setEmail] = useState('tech@cura.lab');
   const [password, setPassword] = useState('password123');
-  const [role, setRole] = useState('Technician');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await login(email, password, role);
-      addToast(`Welcome back! Logged in as ${role}`, 'success');
+      const account = await login(email, password);
+      addToast(`Welcome back, ${account.name}. Logged in as ${account.role}.`, 'success');
       navigate('/dashboard');
     } catch (err) {
       addToast(err.message || 'Login failed', 'error');
@@ -33,11 +32,9 @@ export function LoginPage() {
     if (demoRole === 'Technician') {
       setEmail('tech@cura.lab');
       setPassword('password123');
-      setRole('Technician');
     } else {
       setEmail('clinician@cura.lab');
       setPassword('password123');
-      setRole('Clinician');
     }
   };
 
@@ -49,32 +46,6 @@ export function LoginPage() {
           <p className="text-xs text-slate-400 max-w-xs mt-1">
             Point-of-Care Urinalysis & Clinical Diagnostic Review Portal
           </p>
-        </div>
-
-        {/* Role Selector Tabs */}
-        <div className="bg-slate-800/80 p-1 rounded-2xl border border-slate-700/80 grid grid-cols-2 gap-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setRole('Technician')}
-            className={`py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 ${
-              role === 'Technician'
-                ? 'bg-teal-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" /> Technician
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole('Clinician')}
-            className={`py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 ${
-              role === 'Clinician'
-                ? 'bg-teal-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" /> Clinician
-          </button>
         </div>
 
         {/* Form */}
@@ -107,7 +78,7 @@ export function LoginPage() {
             className="w-full py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-lg shadow-teal-600/30 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
           >
             <LogIn className="w-4 h-4" />
-            {isSubmitting ? 'Authenticating...' : `Sign In as ${role}`}
+            {isSubmitting ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
 

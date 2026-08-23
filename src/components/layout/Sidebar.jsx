@@ -7,27 +7,27 @@ import {
   Users, 
   CheckSquare, 
   User, 
-  LogOut,
-  Sparkles
+  LogOut
 } from 'lucide-react';
 import { BrandLogo } from '../common/BrandLogo';
 import { useAuth } from '../../context/AuthContext';
+import { Avatar } from '../common/Avatar';
 
 export function Sidebar({ pendingCount = 0 }) {
-  const { user, logout, switchRole } = useAuth();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'New Test Wizard', path: '/new-test', icon: FlaskConical },
+    ...(user?.role === 'Technician' ? [{ label: 'New Test Wizard', path: '/new-test', icon: FlaskConical }] : []),
     { label: 'Test Reports', path: '/reports', icon: FileText },
     { label: 'Patients', path: '/patients', icon: Users },
-    { 
+    ...(user?.role === 'Clinician' ? [{
       label: 'Review Queue', 
       path: '/review-queue', 
       icon: CheckSquare,
       badge: pendingCount > 0 ? pendingCount : null
-    },
-    { label: 'Technician Profile', path: '/profile', icon: User }
+    }] : []),
+    { label: 'Profile', path: '/profile', icon: User }
   ];
 
   return (
@@ -69,54 +69,12 @@ export function Sidebar({ pendingCount = 0 }) {
         </nav>
       </div>
 
-      {/* Footer / Role Switcher & Account */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-        {/* Quick Role Switcher for Demo */}
-        <div className="bg-slate-50 dark:bg-slate-800/70 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
-          <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mb-1.5">
-            <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-              <Sparkles className="w-3 h-3 text-amber-500" /> Active Role
-            </span>
-            <span className="uppercase text-[10px] text-teal-600 dark:text-teal-400 font-bold">{user?.role}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-            <button
-              onClick={() => switchRole('Technician')}
-              className={`py-1 text-center rounded-md font-medium transition-all ${
-                user?.role === 'Technician'
-                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Technician
-            </button>
-            <button
-              onClick={() => switchRole('Clinician')}
-              className={`py-1 text-center rounded-md font-medium transition-all ${
-                user?.role === 'Clinician'
-                  ? 'bg-teal-600 text-white font-semibold shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Clinician
-            </button>
-          </div>
-        </div>
-
+      {/* Account */}
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800">
         {/* User Session Row */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            {user?.photoUrl ? (
-              <img
-                src={user.photoUrl}
-                alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border border-teal-500/40 shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0 border border-teal-500/30">
-                {user?.name ? user.name.charAt(0) : 'U'}
-              </div>
-            )}
+            <Avatar name={user?.name} photoUrl={user?.photoUrl} />
             <div className="flex flex-col truncate">
               <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                 {user?.name}

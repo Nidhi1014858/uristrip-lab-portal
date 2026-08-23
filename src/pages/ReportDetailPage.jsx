@@ -8,6 +8,7 @@ import { formatDate } from '../utils/formatters';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { Avatar } from '../components/common/Avatar';
 import { 
   Building2, 
   Printer, 
@@ -66,6 +67,7 @@ export function ReportDetailPage() {
   if (!test) return <div className="p-8 text-center text-slate-500">Report not found.</div>;
 
   const isPendingReview = test.clinicianReview?.status === 'pending';
+  const isClinician = user?.role === 'Clinician';
   const abnormalFindings = test.analytes?.filter((item) => item.flag === 'abnormal') || [];
   const traceFindings = test.analytes?.filter((item) => item.flag === 'trace') || [];
   const normalCount = (test.analytes?.length || 0) - abnormalFindings.length - traceFindings.length;
@@ -88,13 +90,13 @@ export function ReportDetailPage() {
 
         <div className="flex items-center gap-3">
           {/* Dedicated Direct Review Action if pending or clinician */}
-          <button
+          {isClinician && <button
             onClick={() => setIsReviewModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all"
           >
             <UserCheck className="w-4 h-4" />
             {isPendingReview ? 'Review Now' : 'Update Review Verdict'}
-          </button>
+          </button>}
 
           <button
             onClick={() => setIsShareModalOpen(true)}
@@ -114,7 +116,7 @@ export function ReportDetailPage() {
       </div>
 
       {/* Awaiting Review Action Banner */}
-      {isPendingReview && (
+      {isPendingReview && isClinician && (
         <div className="p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/70 border border-sky-300 dark:border-sky-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 no-print">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-xl bg-sky-500 text-white shrink-0 mt-0.5">
@@ -203,7 +205,7 @@ export function ReportDetailPage() {
             <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 no-print" /> {test.reportDestination}
             </span>
-            <span className="text-[11px] font-mono text-slate-500 block">Technician: {test.submittedBy}</span>
+            <span className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5 mt-1">Technician: <Avatar name={test.submittedBy} photoUrl={test.submittedByPhotoUrl} className="w-4 h-4" /> {test.submittedBy}</span>
           </div>
           <div className="report-field">
             <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Report Status</span>
@@ -211,6 +213,11 @@ export function ReportDetailPage() {
             <span className="text-[11px] font-mono text-slate-500 block">
               Normal {normalCount} / Trace {traceFindings.length} / Abnormal {abnormalFindings.length}
             </span>
+          </div>
+          <div className="report-field">
+            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Strip batch details</span>
+            <span className="font-semibold text-slate-900 dark:text-white">{test.stripBatch || 'Not recorded'}</span>
+            <span className="text-[11px] font-mono text-slate-500 block">Manufactured: {test.manufactureDate || '—'} · Expires: {test.expiryDate || '—'}</span>
           </div>
         </div>
 
@@ -303,7 +310,7 @@ export function ReportDetailPage() {
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
               Prepared By
             </span>
-            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1">{test.submittedBy}</p>
+            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2"><Avatar name={test.submittedBy} photoUrl={test.submittedByPhotoUrl} />{test.submittedBy}</p>
             <div className="signature-line" />
             <p className="text-[10px] text-slate-500">Pathology Technician</p>
           </div>
@@ -311,9 +318,7 @@ export function ReportDetailPage() {
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
               Reviewed By
             </span>
-            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1">
-              {test.clinicianReview?.reviewedBy || 'Pending clinician review'}
-            </p>
+            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2">{test.clinicianReview?.reviewedBy && <Avatar name={test.clinicianReview.reviewedBy} photoUrl={test.clinicianReview.reviewerPhotoUrl} />}{test.clinicianReview?.reviewedBy || 'Pending clinician review'}</p>
             <div className="signature-line" />
             <p className="text-[10px] text-slate-500">
               {test.clinicianReview?.reviewedAt ? formatDate(test.clinicianReview.reviewedAt) : 'Not yet signed'}
@@ -345,12 +350,12 @@ export function ReportDetailPage() {
       </div>
 
       {/* Review Modal */}
-      <ReviewModal
+      {isClinician && <ReviewModal
         isOpen={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
         test={test}
         onReviewSubmitted={handleReviewSubmitted}
-      />
+      />}
 
       {/* Share Modal */}
       <ShareReportModal

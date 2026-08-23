@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FlaskConical, 
   CheckSquare, 
@@ -9,7 +9,7 @@ import {
   Clock, 
   Building2, 
   FileText,
-  Plus
+  Plus, Search, PackageSearch, AlertCircle
 } from 'lucide-react';
 import { mockApi } from '../services/mockApi';
 import { useAuth } from '../context/AuthContext';
@@ -20,8 +20,17 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [batchNumber, setBatchNumber] = useState('');
+  const [batchResult, setBatchResult] = useState(undefined);
+
+  const lookupBatch = async (e) => {
+    e.preventDefault();
+    if (!batchNumber.trim()) return;
+    setBatchResult(await mockApi.getBatchSummary(batchNumber));
+  };
 
   useEffect(() => {
     async function loadStats() {
@@ -94,6 +103,8 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {location.state?.accessMessage && <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold">{location.state.accessMessage}</div>}
+
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Today's Tests */}
@@ -114,8 +125,8 @@ export function DashboardPage() {
 
         {/* Pending Review */}
         <div 
-          onClick={() => navigate('/review-queue')}
-          className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+          onClick={() => isClinician && navigate('/review-queue')}
+          className={`bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group ${isClinician ? 'cursor-pointer' : ''}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase font-mono tracking-wider text-slate-500 font-bold">Pending Review</span>
@@ -127,7 +138,7 @@ export function DashboardPage() {
             {stats?.pendingReviewsCount || 0}
           </p>
           <p className="text-[11px] text-sky-600 dark:text-sky-400 mt-1 font-semibold flex items-center gap-1">
-            Review Queue <ArrowRight className="w-3 h-3" />
+            {isClinician ? <>Review Queue <ArrowRight className="w-3 h-3" /></> : 'Clinician action required'}
           </p>
         </div>
 
@@ -166,6 +177,13 @@ export function DashboardPage() {
           </p>
         </div>
       </div>
+
+      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div><h3 className="font-display text-lg font-bold text-slate-900 dark:text-white flex gap-2 items-center"><PackageSearch className="w-5 h-5 text-teal-600" />Look up strip batch</h3><p className="text-xs text-slate-500 mt-1">Find all reports and current lifecycle status for a reagent batch.</p></div>
+        <form onSubmit={lookupBatch} className="flex gap-2 max-w-xl"><input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} placeholder="Enter batch number" className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs" /><button className="px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold flex gap-1.5 items-center"><Search className="w-4 h-4" />Look up</button></form>
+        {batchResult === null && <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300">No records found for this batch.</div>}
+        {batchResult && <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3"><div className="flex flex-wrap justify-between gap-2"><div><p className="font-bold text-sm text-slate-900 dark:text-white">{batchResult.batchNumber}</p><p className="text-xs text-slate-500">{batchResult.stripBrand} · Manufactured {batchResult.manufactureDate || 'Not recorded'} · Expires {batchResult.expiryDate || 'Not recorded'}</p></div><span className={`px-2.5 py-1 h-fit rounded-full text-xs font-bold ${batchResult.status === 'Expired' ? 'bg-rose-100 text-rose-700' : batchResult.status === 'Expiring soon' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{batchResult.status}</span></div><p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{batchResult.tests.length} test(s) run with this batch</p><div className="divide-y divide-slate-100 dark:divide-slate-800">{batchResult.tests.map((test) => <button key={test.id} onClick={() => navigate(`/reports/${test.id}`)} className="w-full py-2 text-left flex justify-between text-xs hover:text-teal-600"><span className="font-semibold">{test.patientName}</span><span>{formatDate(test.submittedAt)} · {test.testCode}</span></button>)}</div></div>}
+      </section>
 
       {/* Recent Tests Table */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">

@@ -4,6 +4,7 @@ import { mockApi } from '../services/mockApi';
 import { StatusBadge, PanelBadge } from '../components/common/Badge';
 import { formatDate, formatShortDate } from '../utils/formatters';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, 
   RotateCcw, 
@@ -30,6 +31,7 @@ import {
 export function PatientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isTechnician } = useAuth();
 
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,12 +88,12 @@ export function PatientDetailPage() {
         </button>
 
         {/* Re-test Shortcut Button */}
-        <button
+        {isTechnician && <button
           onClick={handleRetestPatient}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all self-start sm:self-auto"
         >
           <RotateCcw className="w-4 h-4" /> Re-Test This Patient
-        </button>
+        </button>}
       </div>
 
       {/* Patient Profile Header Card */}
@@ -214,12 +216,12 @@ export function PatientDetailPage() {
             </p>
           </div>
 
-          <button
+          {isTechnician && <button
             onClick={handleRetestPatient}
             className="flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Conduct New Test
-          </button>
+          </button>}
         </div>
 
         <div className="overflow-x-auto">
@@ -229,6 +231,7 @@ export function PatientDetailPage() {
                 <th className="py-3 px-4">Test Code</th>
                 <th className="py-3 px-4">Date</th>
                 <th className="py-3 px-4">Panel Type</th>
+                <th className="py-3 px-4">Strip batch</th>
                 <th className="py-3 px-4">Report Destination</th>
                 <th className="py-3 px-4">Finding Flag</th>
                 <th className="py-3 px-4">Review Status</th>
@@ -251,6 +254,7 @@ export function PatientDetailPage() {
                   <td className="py-3.5 px-4">
                     <PanelBadge type={t.panelType} />
                   </td>
+                  <td className="py-3.5 px-4 text-[10px] text-slate-500"><strong className="text-slate-700 dark:text-slate-300">{t.stripBatch || 'Not recorded'}</strong><br />Mfg {t.manufactureDate || '—'} · Exp {t.expiryDate || '—'}</td>
                   <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300">
                     <div className="flex items-center gap-1.5">
                       <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />

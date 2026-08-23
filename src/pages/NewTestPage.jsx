@@ -18,6 +18,9 @@ export function NewTestPage() {
     reportDestination: 'Metropolis Healthcare',
     panelType: '10-panel',
     stripBrand: 'Siemens Multistix 10SG',
+    stripBatch: '',
+    manufactureDate: '',
+    expiryDate: '',
     stripImageUrl: '',
     rgbReadings: {},
     technicianNotes: ''

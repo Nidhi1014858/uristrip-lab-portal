@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { User, Mail, Lock, ShieldCheck, Building2, Upload, Save, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, ShieldCheck, Building2, Upload, Save } from 'lucide-react';
+import { Avatar } from '../components/common/Avatar';
 
 export function ProfilePage() {
   const { user, updateUserProfile } = useAuth();
@@ -13,9 +14,10 @@ export function ProfilePage() {
     password: user?.password || '',
     designation: user?.designation || '',
     department: user?.department || 'Point-of-Care Testing (POCT)',
-    photoUrl: user?.photoUrl || ''
+    photoUrl: user?.photoUrl || null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -23,8 +25,23 @@ export function ProfilePage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, photoUrl: reader.result }));
+        setConfirmRemove(false);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setIsSubmitting(true);
+    try {
+      await updateUserProfile({ photoUrl: null });
+      setFormData((current) => ({ ...current, photoUrl: null }));
+      setConfirmRemove(false);
+      addToast('Profile photo removed.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Unable to remove profile photo', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -56,17 +73,7 @@ export function ProfilePage() {
         {/* Profile Avatar Row */}
         <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
           <div className="relative group">
-            {formData.photoUrl ? (
-              <img
-                src={formData.photoUrl}
-                alt="Profile Avatar"
-                className="w-20 h-20 rounded-full object-cover border-2 border-teal-500 shadow-md"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-2xl border-2 border-teal-500/30">
-                {formData.name ? formData.name.charAt(0) : 'U'}
-              </div>
-            )}
+            <Avatar name={formData.name} photoUrl={formData.photoUrl} className="w-20 h-20 border-2 border-teal-500 shadow-md" />
             <label className="absolute inset-0 rounded-full bg-slate-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-semibold cursor-pointer transition-opacity">
               <Upload className="w-4 h-4 mb-0.5" /> Change
               <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
@@ -81,6 +88,8 @@ export function ProfilePage() {
               </span>
               <span className="text-xs text-slate-500 font-mono">{user?.designation}</span>
             </div>
+            {formData.photoUrl && !confirmRemove && <button type="button" onClick={() => setConfirmRemove(true)} className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline">Remove photo</button>}
+            {formData.photoUrl && confirmRemove && <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 text-xs"><span className="text-rose-700 dark:text-rose-300 font-semibold">Remove profile photo?</span><button type="button" onClick={handleRemovePhoto} disabled={isSubmitting} className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold disabled:opacity-50">Confirm</button><button type="button" onClick={() => setConfirmRemove(false)} className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">Cancel</button></div>}
           </div>
         </div>
 

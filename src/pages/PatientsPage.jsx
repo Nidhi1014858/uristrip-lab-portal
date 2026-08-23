@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { mockApi } from '../services/mockApi';
 import { Search, User, Phone, Mail, ArrowRight, Plus } from 'lucide-react';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -7,6 +8,7 @@ import { formatDate } from '../utils/formatters';
 
 export function PatientsPage() {
   const navigate = useNavigate();
+  const { isTechnician } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -37,12 +39,12 @@ export function PatientsPage() {
           </p>
         </div>
 
-        <button
+        {isTechnician && <button
           onClick={() => navigate('/new-test')}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" /> Register & New Test
-        </button>
+        </button>}
       </div>
 
       {/* Search Bar */}

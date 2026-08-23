@@ -35,6 +35,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function RoleRoute({ allowed, children }) {
+  const { user } = useAuth();
+  if (!allowed.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace state={{ accessMessage: `The ${user?.role || 'current'} role does not have access to that area.` }} />;
+  }
+  return children;
+}
+
 export function App() {
   return (
     <ThemeProvider>
@@ -57,12 +65,12 @@ export function App() {
               >
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="new-test" element={<NewTestPage />} />
+                <Route path="new-test" element={<RoleRoute allowed={['Technician']}><NewTestPage /></RoleRoute>} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="reports/:id" element={<ReportDetailPage />} />
                 <Route path="patients" element={<PatientsPage />} />
                 <Route path="patients/:id" element={<PatientDetailPage />} />
-                <Route path="review-queue" element={<ReviewQueuePage />} />
+                <Route path="review-queue" element={<RoleRoute allowed={['Clinician']}><ReviewQueuePage /></RoleRoute>} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>
 

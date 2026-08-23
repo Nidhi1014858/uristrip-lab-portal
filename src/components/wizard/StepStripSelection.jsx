@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Sparkles, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Layers, Sparkles, CheckCircle, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { STRIP_BRANDS } from '../../services/seedData';
 import { PANEL_10_KEYS, PANEL_14_KEYS } from '../../services/predictionEngine';
 
@@ -40,6 +40,11 @@ export function StepStripSelection({ formData, updateFormData, onNext, onPrev })
   // Check support for each panel type under current brand
   const supports10 = currentBrandObj.panels.includes('10-panel');
   const supports14 = currentBrandObj.panels.includes('14-panel');
+  const today = new Date().toISOString().slice(0, 10);
+  const expired = formData.expiryDate && formData.expiryDate < today;
+  const manufactureFuture = formData.manufactureDate && formData.manufactureDate > today;
+  const manufactureAfterExpiry = formData.manufactureDate && formData.expiryDate && formData.manufactureDate > formData.expiryDate;
+  const batchValid = Boolean(formData.stripBatch && formData.manufactureDate && formData.expiryDate) && !expired && !manufactureFuture && !manufactureAfterExpiry;
 
   // Explanation message for selected brand
   const getBrandExplanation = (brand) => {
@@ -61,6 +66,19 @@ export function StepStripSelection({ formData, updateFormData, onNext, onPrev })
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           Choose between standard 10-parameter urinalysis strip or extended 14-parameter strip. Options auto-adjust based on brand hardware specs.
         </p>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+        <div><label className="block text-sm font-bold text-slate-900 dark:text-white">Strip batch details</label><p className="text-xs text-slate-500 mt-1">Batch traceability is required before reagent-pad reading.</p></div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div><label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Batch number</label><input value={formData.stripBatch} onChange={(e) => updateFormData({ stripBatch: e.target.value })} placeholder="e.g. MS10-2408" className="mt-1 w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs" /></div>
+          <div><label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Manufacture date</label><input type="date" value={formData.manufactureDate} onChange={(e) => updateFormData({ manufactureDate: e.target.value })} className="mt-1 w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs" /></div>
+          <div><label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Expiry date</label><input type="date" value={formData.expiryDate} onChange={(e) => updateFormData({ expiryDate: e.target.value })} className="mt-1 w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs" /></div>
+        </div>
+        {!formData.stripBatch && <p className="text-xs text-rose-600">Enter the strip batch number.</p>}
+        {manufactureFuture && <p className="text-xs text-rose-600">Manufacture date cannot be in the future.</p>}
+        {manufactureAfterExpiry && <p className="text-xs text-rose-600">Manufacture date cannot be after the expiry date.</p>}
+        {expired && <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-semibold flex gap-2"><AlertTriangle className="w-4 h-4 shrink-0" />This strip batch expired on {formData.expiryDate} — testing with an expired strip may produce unreliable results. Submission blocked.</div>}
       </div>
 
       {/* Compatibility Guard Banner */}
@@ -248,8 +266,9 @@ export function StepStripSelection({ formData, updateFormData, onNext, onPrev })
         </button>
         <button
           type="button"
-          onClick={onNext}
-          className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm shadow-md shadow-teal-600/20 transition-all"
+          onClick={() => batchValid && onNext()}
+          disabled={!batchValid}
+          className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Next: Reagent Pad Reading →
         </button>

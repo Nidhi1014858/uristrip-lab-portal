@@ -21,10 +21,10 @@ export function AuthProvider({ children }) {
     loadSession();
   }, []);
 
-  const login = async (email, password, role) => {
+  const login = async (email, password) => {
     setLoading(true);
     try {
-      const u = await mockApi.login(email, password, role);
+      const u = await mockApi.login(email, password);
       setUser(u);
       return u;
     } finally {
@@ -48,13 +48,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const switchRole = async (newRole) => {
-    if (!user) return;
-    const updated = { ...user, role: newRole };
-    setUser(updated);
-    localStorage.setItem('cura_session', JSON.stringify(updated));
-  };
-
   const updateUserProfile = async (updates) => {
     if (!user) return;
     const updated = await mockApi.updateProfile(user.id, updates);
@@ -70,7 +63,6 @@ export function AuthProvider({ children }) {
         login,
         signup,
         logout,
-        switchRole,
         updateUserProfile,
         isTechnician: user?.role === 'Technician',
         isClinician: user?.role === 'Clinician'

@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Clock, FileCheck, AlertTriangle } from 'lucide-react';
 import { formatDate } from '../../utils/formatters';
+import { Avatar } from '../common/Avatar';
 
 export function ReviewTimeline({ test }) {
   if (!test) return null;
@@ -35,9 +36,7 @@ export function ReviewTimeline({ test }) {
             <FileCheck className="w-5 h-5" />
           </div>
           <span className="mt-2 text-xs font-bold text-slate-900 dark:text-white">Submitted</span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-            {test.submittedBy}
-          </span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex items-center gap-1"><Avatar name={test.submittedBy} photoUrl={test.submittedByPhotoUrl} className="w-4 h-4" />{test.submittedBy}</span>
           <span className="text-[10px] text-slate-400 font-mono">{formatDate(test.submittedAt)}</span>
         </div>
 
@@ -77,9 +76,7 @@ export function ReviewTimeline({ test }) {
           <span className="mt-2 text-xs font-bold text-slate-900 dark:text-white">
             {isApproved ? 'Approved' : isFlagged ? 'Retest Flagged' : 'Pending Action'}
           </span>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-            {review.reviewedBy || 'Pending Clinician'}
-          </span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5 flex items-center gap-1">{review.reviewedBy && <Avatar name={review.reviewedBy} photoUrl={review.reviewerPhotoUrl} className="w-4 h-4" />}{review.reviewedBy || 'Pending Clinician'}</span>
           <span className="text-[10px] text-slate-400 font-mono">
             {review.reviewedAt ? formatDate(review.reviewedAt) : 'In Queue'}
           </span>
@@ -94,7 +91,7 @@ export function ReviewTimeline({ test }) {
             : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200'
         }`}>
           <div className="font-semibold mb-0.5 flex items-center gap-1.5">
-            <span>Clinician Notes ({review.reviewedBy}):</span>
+            <Avatar name={review.reviewedBy} photoUrl={review.reviewerPhotoUrl} className="w-4 h-4" /><span>Clinician Notes ({review.reviewedBy}):</span>
           </div>
           <p className="italic">{review.notes || 'No specific notes recorded.'}</p>
         </div>

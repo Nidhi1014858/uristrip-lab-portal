@@ -39,9 +39,13 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
         patientCode: formData.patientCode,
         panelType: formData.panelType,
         stripBrand: formData.stripBrand,
+        stripBatch: formData.stripBatch,
+        manufactureDate: formData.manufactureDate,
+        expiryDate: formData.expiryDate,
         reportDestination: formData.reportDestination,
         stripImageUrl: formData.stripImageUrl,
         submittedBy: user?.name || 'Ananya Deshmukh',
+        submittedByPhotoUrl: user?.photoUrl || null,
         technicianNotes: formData.technicianNotes || '',
         analytes: predictedList
       });
@@ -98,6 +102,7 @@ export function StepReviewSubmit({ formData, updateFormData, onPrev }) {
             <PanelBadge type={formData.panelType} />
             <span className="text-[11px] text-slate-500 font-medium">{formData.stripBrand}</span>
           </div>
+          <p className="text-[11px] text-slate-500">Batch {formData.stripBatch} · Mfg {formData.manufactureDate} · Exp {formData.expiryDate}</p>
         </div>
 
         {/* Overall Status Banner */}

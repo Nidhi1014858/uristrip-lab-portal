@@ -15,14 +15,19 @@ export function ReviewModal({ isOpen, onClose, test, onReviewSubmitted }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (user?.role !== 'Clinician') {
+      addToast('Only clinicians can approve or flag reports.', 'error');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const reviewerName = user ? (user.role === 'Clinician' ? user.name : `${user.name} (Acting Clinician)`) : 'Dr. Reviewer';
+      const reviewerName = user?.name || 'Dr. Reviewer';
       await onReviewSubmitted(test.id, {
         status: decision,
         notes,
-        reviewerName
+        reviewerName,
+        reviewerPhotoUrl: user?.photoUrl || null
       });
 
       addToast(

@@ -56,7 +56,7 @@ export function ReportsPage() {
             type="text"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            placeholder="Search report by Test ID, Patient name, or Pathology destination..."
+            placeholder="Search Test ID, patient, destination, or batch number..."
             className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -129,6 +129,7 @@ export function ReportsPage() {
                   <th className="py-3.5 px-4">Test Code</th>
                   <th className="py-3.5 px-4">Patient</th>
                   <th className="py-3.5 px-4">Panel Type</th>
+                  <th className="py-3.5 px-4">Strip batch</th>
                   <th className="py-3.5 px-4">Pathology Destination</th>
                   <th className="py-3.5 px-4">Finding Flag</th>
                   <th className="py-3.5 px-4">Clinician Review</th>
@@ -153,6 +154,7 @@ export function ReportsPage() {
                     <td className="py-3.5 px-4">
                       <PanelBadge type={t.panelType} />
                     </td>
+                    <td className="py-3.5 px-4 text-[11px] text-slate-600 dark:text-slate-300"><div className="font-bold">{t.stripBatch || 'Not recorded'}</div><div>Mfg {t.manufactureDate || '—'} · Exp {t.expiryDate || '—'}</div>{t.expiryDate && new Date(`${t.expiryDate}T23:59:59`) < new Date() && <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">Expired batch</span>}</td>
                     <td className="py-3.5 px-4 font-sans text-slate-600 dark:text-slate-300">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
