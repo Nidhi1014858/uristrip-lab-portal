@@ -61,7 +61,7 @@ export function ReviewModal({ isOpen, onClose, test, onReviewSubmitted }) {
           <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
             Review Verdict
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setDecision('approved')}

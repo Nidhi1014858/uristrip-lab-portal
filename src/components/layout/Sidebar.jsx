@@ -31,7 +31,7 @@ export function Sidebar({ pendingCount = 0 }) {
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30">
+    <aside className="hidden md:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col justify-between h-screen sticky top-0 shrink-0 select-none z-30">
       <div>
         {/* Top Logo */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800">

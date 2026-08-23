@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sun, Moon, Plus, Bell, Search, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { BrandLogo } from '../common/BrandLogo';
 
 export function Header({ pendingCount = 0 }) {
   const { theme, toggleTheme } = useTheme();
@@ -10,9 +11,12 @@ export function Header({ pendingCount = 0 }) {
   const navigate = useNavigate();
 
   return (
-    <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 sticky top-0 z-20 flex items-center justify-between">
+    <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-3 sticky top-0 z-20 flex items-center justify-between gap-2">
+      <div className="sm:hidden min-w-0">
+        <BrandLogo size="sm" className="gap-1.5" />
+      </div>
       {/* Search Bar */}
-      <div className="relative max-w-md w-full">
+      <div className="relative max-w-md w-full hidden sm:block">
         <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
@@ -23,7 +27,7 @@ export function Header({ pendingCount = 0 }) {
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
         {/* Role Tag */}
         <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
           <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />

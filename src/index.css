@@ -24,6 +24,18 @@
   display: none;
 }
 
+@supports (padding: max(0px)) {
+  .safe-area-pb {
+    padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Print styles for clinical reports */
 @media print {
   @page {
