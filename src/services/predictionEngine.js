@@ -3,6 +3,43 @@
  * Supports 10-panel and 14-panel configurations.
  */
 
+const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+
+const rgbSeverity = (normalRGB, abnormalRGB, r, g, b) => {
+  const vector = {
+    r: abnormalRGB.r - normalRGB.r,
+    g: abnormalRGB.g - normalRGB.g,
+    b: abnormalRGB.b - normalRGB.b
+  };
+  const sample = {
+    r: r - normalRGB.r,
+    g: g - normalRGB.g,
+    b: b - normalRGB.b
+  };
+  const vectorLengthSq = vector.r ** 2 + vector.g ** 2 + vector.b ** 2;
+
+  if (vectorLengthSq === 0) return 0;
+
+  return clamp(
+    (sample.r * vector.r + sample.g * vector.g + sample.b * vector.b) / vectorLengthSq
+  );
+};
+
+const confidenceFromSeverity = (severity) => {
+  const nearestAnchorDistance = Math.min(severity, 1 - severity);
+  return Math.round(99 - nearestAnchorDistance * 12);
+};
+
+const fromClinicalBands = (normalRGB, abnormalRGB, r, g, b, bands) => {
+  const severity = rgbSeverity(normalRGB, abnormalRGB, r, g, b);
+  const band = bands.find((item) => severity <= item.max) || bands[bands.length - 1];
+
+  return {
+    ...band.result,
+    score: band.result.score ?? confidenceFromSeverity(severity)
+  };
+};
+
 export const ANALYTE_DEFINITIONS = {
   // 10-Panel Core Analytes
   glucose: {
@@ -13,14 +50,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Metabolic',
     normalRGB: { r: 64, g: 196, b: 180 },
     abnormalRGB: { r: 180, g: 90, b: 40 },
-    calculate: (r, g, b) => {
-      // Lower green/blue, higher red indicates elevation
-      const score = (r * 1.8 - g * 0.9 - b * 0.8);
-      if (score < 40) return { value: 'Negative', flag: 'normal', score: 98, numeric: 0 };
-      if (score < 90) return { value: '100 (Trace)', flag: 'trace', score: 94, numeric: 100 };
-      if (score < 150) return { value: '250 (+)', flag: 'abnormal', score: 96, numeric: 250 };
-      if (score < 220) return { value: '500 (++)', flag: 'abnormal', score: 95, numeric: 500 };
-      return { value: '1000+ (+++)', flag: 'abnormal', score: 92, numeric: 1000 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.22, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.40, result: { value: 'Trace (100 mg/dL)', flag: 'trace', numeric: 100 } },
+        { max: 0.62, result: { value: '250 mg/dL (+)', flag: 'abnormal', numeric: 250 } },
+        { max: 0.82, result: { value: '500 mg/dL (++)', flag: 'abnormal', numeric: 500 } },
+        { max: 1, result: { value: '1000+ mg/dL (+++)', flag: 'abnormal', numeric: 1000 } }
+      ]);
     }
   },
   protein: {
@@ -31,13 +68,15 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Renal',
     normalRGB: { r: 230, g: 220, b: 130 },
     abnormalRGB: { r: 30, g: 140, b: 110 },
-    calculate: (r, g, b) => {
-      const score = (g * 1.5 + b * 1.2 - r * 1.5);
-      if (score < 30) return { value: 'Negative', flag: 'normal', score: 99, numeric: 0 };
-      if (score < 80) return { value: 'Trace (15 mg/dL)', flag: 'trace', score: 95, numeric: 15 };
-      if (score < 130) return { value: '30 mg/dL (+)', flag: 'abnormal', score: 97, numeric: 30 };
-      if (score < 180) return { value: '100 mg/dL (++)', flag: 'abnormal', score: 94, numeric: 100 };
-      return { value: '300+ mg/dL (+++)', flag: 'abnormal', score: 91, numeric: 300 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.18, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.34, result: { value: 'Trace (5-10 mg/dL)', flag: 'trace', numeric: 10 } },
+        { max: 0.56, result: { value: '30 mg/dL (1+)', flag: 'abnormal', numeric: 30 } },
+        { max: 0.78, result: { value: '100 mg/dL (2+)', flag: 'abnormal', numeric: 100 } },
+        { max: 0.92, result: { value: '300 mg/dL (3+)', flag: 'abnormal', numeric: 300 } },
+        { max: 1, result: { value: '1000 mg/dL (4+)', flag: 'abnormal', numeric: 1000 } }
+      ]);
     }
   },
   ph: {
@@ -48,12 +87,11 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Acid-Base',
     normalRGB: { r: 230, g: 160, b: 50 },
     abnormalRGB: { r: 40, g: 120, b: 180 },
-    calculate: (r, g, b) => {
-      // Orange/Yellow (low pH) to Blue/Green (high pH)
-      const ratio = (b * 1.5 + g * 0.8) / (r + 1);
-      let phVal = Math.min(8.5, Math.max(5.0, Number((5.0 + ratio * 2.2).toFixed(1))));
-      let flag = (phVal < 4.5 || phVal > 8.0) ? 'abnormal' : 'normal';
-      return { value: `${phVal}`, flag, score: 96, numeric: phVal };
+    calculate(r, g, b) {
+      const severity = rgbSeverity(this.normalRGB, this.abnormalRGB, r, g, b);
+      const phVal = Number((5.0 + severity * 3.5).toFixed(1));
+      const flag = phVal > 8.0 ? 'abnormal' : 'normal';
+      return { value: `${phVal}`, flag, score: confidenceFromSeverity(severity), numeric: phVal };
     }
   },
   ketones: {
@@ -64,13 +102,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Metabolic',
     normalRGB: { r: 245, g: 215, b: 175 },
     abnormalRGB: { r: 150, g: 30, b: 90 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.2 - g * 1.5 + b * 0.5);
-      if (score < 80) return { value: 'Negative', flag: 'normal', score: 98, numeric: 0 };
-      if (score < 120) return { value: 'Trace (5 mg/dL)', flag: 'trace', score: 93, numeric: 5 };
-      if (score < 160) return { value: '15 mg/dL (+)', flag: 'abnormal', score: 96, numeric: 15 };
-      if (score < 200) return { value: '40 mg/dL (++)', flag: 'abnormal', score: 95, numeric: 40 };
-      return { value: '80+ mg/dL (+++)', flag: 'abnormal', score: 94, numeric: 80 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.22, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.40, result: { value: 'Trace (5 mg/dL)', flag: 'trace', numeric: 5 } },
+        { max: 0.62, result: { value: '15 mg/dL (+)', flag: 'abnormal', numeric: 15 } },
+        { max: 0.82, result: { value: '40 mg/dL (++)', flag: 'abnormal', numeric: 40 } },
+        { max: 1, result: { value: '80+ mg/dL (+++)', flag: 'abnormal', numeric: 80 } }
+      ]);
     }
   },
   blood: {
@@ -81,13 +120,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Renal/Vascular',
     normalRGB: { r: 235, g: 195, b: 60 },
     abnormalRGB: { r: 35, g: 115, b: 75 },
-    calculate: (r, g, b) => {
-      const score = (g * 1.4 + b * 0.8 - r * 1.2);
-      if (score < 40) return { value: 'Negative', flag: 'normal', score: 99, numeric: 0 };
-      if (score < 90) return { value: 'Trace non-hemolyzed', flag: 'trace', score: 94, numeric: 10 };
-      if (score < 140) return { value: '25 cells/µL (+)', flag: 'abnormal', score: 97, numeric: 25 };
-      if (score < 190) return { value: '80 cells/µL (++)', flag: 'abnormal', score: 95, numeric: 80 };
-      return { value: '200+ cells/µL (+++)', flag: 'abnormal', score: 93, numeric: 200 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.20, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.38, result: { value: 'Trace intact RBC', flag: 'trace', numeric: 10 } },
+        { max: 0.58, result: { value: '25 cells/uL (+)', flag: 'abnormal', numeric: 25 } },
+        { max: 0.78, result: { value: '80 cells/uL (++)', flag: 'abnormal', numeric: 80 } },
+        { max: 1, result: { value: '200+ cells/uL (+++)', flag: 'abnormal', numeric: 200 } }
+      ]);
     }
   },
   bilirubin: {
@@ -98,12 +138,13 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Hepatic',
     normalRGB: { r: 245, g: 225, b: 180 },
     abnormalRGB: { r: 185, g: 130, b: 155 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.2 + b * 1.1 - g * 1.6);
-      if (score < 70) return { value: 'Negative', flag: 'normal', score: 98, numeric: 0 };
-      if (score < 110) return { value: '1.0 mg/dL (+)', flag: 'abnormal', score: 95, numeric: 1.0 };
-      if (score < 150) return { value: '2.0 mg/dL (++)', flag: 'abnormal', score: 96, numeric: 2.0 };
-      return { value: '4.0+ mg/dL (+++)', flag: 'abnormal', score: 93, numeric: 4.0 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.24, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.52, result: { value: 'Small (1 mg/dL)', flag: 'abnormal', numeric: 1 } },
+        { max: 0.76, result: { value: 'Moderate (2 mg/dL)', flag: 'abnormal', numeric: 2 } },
+        { max: 1, result: { value: 'Large (4+ mg/dL)', flag: 'abnormal', numeric: 4 } }
+      ]);
     }
   },
   urobilinogen: {
@@ -114,13 +155,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Hepatic',
     normalRGB: { r: 250, g: 215, b: 180 },
     abnormalRGB: { r: 220, g: 80, b: 100 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.4 - g * 1.2 - b * 0.8);
-      if (score < 60) return { value: '0.2 mg/dL (Normal)', flag: 'normal', score: 97, numeric: 0.2 };
-      if (score < 100) return { value: '1.0 mg/dL (Normal)', flag: 'normal', score: 96, numeric: 1.0 };
-      if (score < 140) return { value: '2.0 mg/dL (Elevated)', flag: 'abnormal', score: 94, numeric: 2.0 };
-      if (score < 180) return { value: '4.0 mg/dL (Elevated)', flag: 'abnormal', score: 95, numeric: 4.0 };
-      return { value: '8.0+ mg/dL (High)', flag: 'abnormal', score: 92, numeric: 8.0 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.32, result: { value: '0.2 mg/dL', flag: 'normal', numeric: 0.2 } },
+        { max: 0.50, result: { value: '1.0 mg/dL', flag: 'normal', numeric: 1 } },
+        { max: 0.68, result: { value: '2.0 mg/dL (Elevated)', flag: 'abnormal', numeric: 2 } },
+        { max: 0.86, result: { value: '4.0 mg/dL (Elevated)', flag: 'abnormal', numeric: 4 } },
+        { max: 1, result: { value: '8.0+ mg/dL (High)', flag: 'abnormal', numeric: 8 } }
+      ]);
     }
   },
   nitrite: {
@@ -131,10 +173,11 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Infection',
     normalRGB: { r: 250, g: 240, b: 225 },
     abnormalRGB: { r: 235, g: 110, b: 160 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.5 - g * 1.4 + b * 0.8);
-      if (score < 100) return { value: 'Negative', flag: 'normal', score: 99, numeric: 0 };
-      return { value: 'Positive (UTI indicated)', flag: 'abnormal', score: 97, numeric: 1 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.44, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 1, result: { value: 'Positive', flag: 'abnormal', numeric: 1 } }
+      ]);
     }
   },
   leucocytes: {
@@ -145,13 +188,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Infection',
     normalRGB: { r: 245, g: 235, b: 200 },
     abnormalRGB: { r: 140, g: 80, b: 140 },
-    calculate: (r, g, b) => {
-      const score = (b * 1.4 - g * 1.1 + r * 0.5);
-      if (score < 60) return { value: 'Negative', flag: 'normal', score: 98, numeric: 0 };
-      if (score < 100) return { value: 'Trace (15 cells/µL)', flag: 'trace', score: 94, numeric: 15 };
-      if (score < 140) return { value: '70 cells/µL (+)', flag: 'abnormal', score: 96, numeric: 70 };
-      if (score < 180) return { value: '125 cells/µL (++)', flag: 'abnormal', score: 95, numeric: 125 };
-      return { value: '500+ cells/µL (+++)', flag: 'abnormal', score: 93, numeric: 500 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.22, result: { value: 'Negative', flag: 'normal', numeric: 0 } },
+        { max: 0.40, result: { value: 'Trace (15 cells/uL)', flag: 'trace', numeric: 15 } },
+        { max: 0.60, result: { value: '70 cells/uL (+)', flag: 'abnormal', numeric: 70 } },
+        { max: 0.80, result: { value: '125 cells/uL (++)', flag: 'abnormal', numeric: 125 } },
+        { max: 1, result: { value: '500+ cells/uL (+++)', flag: 'abnormal', numeric: 500 } }
+      ]);
     }
   },
   sg: {
@@ -162,12 +206,11 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Hydration/Renal',
     normalRGB: { r: 60, g: 130, b: 150 },
     abnormalRGB: { r: 210, g: 160, b: 40 },
-    calculate: (r, g, b) => {
-      // Dark cyan (1.000) to Yellow/Brown (1.030)
-      const score = (r * 1.5 + g * 0.8 - b * 1.2);
-      let sgVal = Number((1.005 + Math.min(0.025, Math.max(0, score / 4000))).toFixed(3));
-      let flag = (sgVal < 1.005 || sgVal > 1.030) ? 'abnormal' : 'normal';
-      return { value: `${sgVal}`, flag, score: 97, numeric: sgVal };
+    calculate(r, g, b) {
+      const severity = rgbSeverity(this.normalRGB, this.abnormalRGB, r, g, b);
+      const sgVal = Number((1.005 + severity * 0.025).toFixed(3));
+      const flag = sgVal < 1.005 || sgVal > 1.030 ? 'abnormal' : 'normal';
+      return { value: `${sgVal}`, flag, score: confidenceFromSeverity(severity), numeric: sgVal };
     }
   },
 
@@ -180,12 +223,13 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Interference',
     normalRGB: { r: 70, g: 170, b: 200 },
     abnormalRGB: { r: 230, g: 190, b: 60 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.4 + g * 0.8 - b * 1.3);
-      if (score < 40) return { value: '0 mg/dL', flag: 'normal', score: 98, numeric: 0 };
-      if (score < 90) return { value: '10 mg/dL', flag: 'normal', score: 96, numeric: 10 };
-      if (score < 140) return { value: '25 mg/dL', flag: 'trace', score: 95, numeric: 25 };
-      return { value: '50+ mg/dL (High)', flag: 'abnormal', score: 94, numeric: 50 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.30, result: { value: '0 mg/dL', flag: 'normal', numeric: 0 } },
+        { max: 0.52, result: { value: '10 mg/dL', flag: 'normal', numeric: 10 } },
+        { max: 0.74, result: { value: '25 mg/dL (Interference risk)', flag: 'trace', numeric: 25 } },
+        { max: 1, result: { value: '50+ mg/dL (High interference risk)', flag: 'abnormal', numeric: 50 } }
+      ]);
     }
   },
   calcium: {
@@ -196,12 +240,13 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Electrolyte',
     normalRGB: { r: 235, g: 210, b: 160 },
     abnormalRGB: { r: 190, g: 70, b: 120 },
-    calculate: (r, g, b) => {
-      const score = (r * 1.1 + b * 1.2 - g * 1.5);
-      if (score < 50) return { value: '2.5 mg/dL (Normal)', flag: 'normal', score: 97, numeric: 2.5 };
-      if (score < 100) return { value: '5.0 mg/dL (Normal)', flag: 'normal', score: 96, numeric: 5.0 };
-      if (score < 150) return { value: '10.0 mg/dL (Borderline)', flag: 'trace', score: 94, numeric: 10.0 };
-      return { value: '20.0+ mg/dL (Elevated)', flag: 'abnormal', score: 92, numeric: 20.0 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.28, result: { value: '2.5 mg/dL', flag: 'normal', numeric: 2.5 } },
+        { max: 0.52, result: { value: '5.0 mg/dL', flag: 'normal', numeric: 5 } },
+        { max: 0.74, result: { value: '10.0 mg/dL (Borderline)', flag: 'trace', numeric: 10 } },
+        { max: 1, result: { value: '20.0+ mg/dL (Elevated)', flag: 'abnormal', numeric: 20 } }
+      ]);
     }
   },
   creatinine: {
@@ -212,13 +257,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Renal',
     normalRGB: { r: 210, g: 150, b: 90 },
     abnormalRGB: { r: 90, g: 70, b: 130 },
-    calculate: (r, g, b) => {
-      const score = (b * 1.5 - r * 1.2);
-      if (score < 30) return { value: '10 mg/dL (Low)', flag: 'trace', score: 95, numeric: 10 };
-      if (score < 80) return { value: '50 mg/dL (Normal)', flag: 'normal', score: 98, numeric: 50 };
-      if (score < 130) return { value: '100 mg/dL (Normal)', flag: 'normal', score: 97, numeric: 100 };
-      if (score < 180) return { value: '200 mg/dL (High)', flag: 'abnormal', score: 94, numeric: 200 };
-      return { value: '300+ mg/dL (Very High)', flag: 'abnormal', score: 91, numeric: 300 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.20, result: { value: '10 mg/dL', flag: 'normal', numeric: 10 } },
+        { max: 0.48, result: { value: '50 mg/dL', flag: 'normal', numeric: 50 } },
+        { max: 0.68, result: { value: '100 mg/dL', flag: 'normal', numeric: 100 } },
+        { max: 0.86, result: { value: '200 mg/dL (High)', flag: 'abnormal', numeric: 200 } },
+        { max: 1, result: { value: '300+ mg/dL (Very High)', flag: 'abnormal', numeric: 300 } }
+      ]);
     }
   },
   microalbumin: {
@@ -229,13 +275,14 @@ export const ANALYTE_DEFINITIONS = {
     category: 'Renal Risk',
     normalRGB: { r: 240, g: 235, b: 210 },
     abnormalRGB: { r: 60, g: 140, b: 160 },
-    calculate: (r, g, b) => {
-      const score = (g * 1.4 + b * 1.2 - r * 1.6);
-      if (score < 30) return { value: '<10 mg/L (Normal)', flag: 'normal', score: 99, numeric: 10 };
-      if (score < 80) return { value: '20 mg/L (Borderline)', flag: 'trace', score: 95, numeric: 20 };
-      if (score < 130) return { value: '50 mg/L (Abnormal)', flag: 'abnormal', score: 96, numeric: 50 };
-      if (score < 180) return { value: '100 mg/L (Abnormal)', flag: 'abnormal', score: 94, numeric: 100 };
-      return { value: '150+ mg/L (Severe)', flag: 'abnormal', score: 92, numeric: 150 };
+    calculate(r, g, b) {
+      return fromClinicalBands(this.normalRGB, this.abnormalRGB, r, g, b, [
+        { max: 0.28, result: { value: '<20 mg/L', flag: 'normal', numeric: 10 } },
+        { max: 0.48, result: { value: '20 mg/L (Borderline)', flag: 'trace', numeric: 20 } },
+        { max: 0.68, result: { value: '50 mg/L (Abnormal)', flag: 'abnormal', numeric: 50 } },
+        { max: 0.86, result: { value: '100 mg/L (Abnormal)', flag: 'abnormal', numeric: 100 } },
+        { max: 1, result: { value: '150+ mg/L (Severe)', flag: 'abnormal', numeric: 150 } }
+      ]);
     }
   }
 };

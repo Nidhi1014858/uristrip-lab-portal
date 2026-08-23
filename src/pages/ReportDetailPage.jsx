@@ -10,12 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { 
   Building2, 
-  User, 
   Printer, 
   ArrowLeft, 
-  CheckCircle2, 
-  AlertTriangle, 
-  FileText,
   UserCheck,
   ShieldCheck
 } from 'lucide-react';
@@ -59,6 +55,14 @@ export function ReportDetailPage() {
   if (!test) return <div className="p-8 text-center text-slate-500">Report not found.</div>;
 
   const isPendingReview = test.clinicianReview?.status === 'pending';
+  const abnormalFindings = test.analytes?.filter((item) => item.flag === 'abnormal') || [];
+  const traceFindings = test.analytes?.filter((item) => item.flag === 'trace') || [];
+  const normalCount = (test.analytes?.length || 0) - abnormalFindings.length - traceFindings.length;
+  const reportSummary = test.overallStatus === 'abnormal'
+    ? 'Abnormal findings detected'
+    : test.overallStatus === 'trace'
+    ? 'Trace findings detected'
+    : 'Within normal dipstick limits';
 
   return (
     <div className="space-y-8 animate-fade-in max-w-5xl mx-auto">
@@ -116,75 +120,100 @@ export function ReportDetailPage() {
       )}
 
       {/* Clinical Review Timeline Component */}
-      <ReviewTimeline test={test} />
+      <div className="no-print">
+        <ReviewTimeline test={test} />
+      </div>
 
       {/* Printable Clinical Report Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6 card-print">
+      <div className="clinical-report bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6 card-print">
         {/* Report Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+        <div className="report-letterhead flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
           <div>
+            <span className="print-only report-kicker">Cura Diagnostics Laboratory</span>
             <div className="flex items-center gap-2">
               <span className="font-display font-extrabold text-2xl text-slate-900 dark:text-white">
-                Cura Clinical Report
+                Urine Routine Examination
               </span>
               <PanelBadge type={test.panelType} />
             </div>
             <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-1">
-              Report Code: <strong className="text-slate-900 dark:text-white">{test.testCode}</strong>
+              Semi-quantitative dipstick analysis report
             </p>
           </div>
 
           {/* Pathology Destination Badge */}
-          <div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-right sm:text-left">
+          <div className="report-code-box bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-right sm:text-left">
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
-              Report Prepared For
+              Report No.
             </span>
-            <span className="text-xs font-bold text-teal-700 dark:text-teal-300 flex items-center gap-1.5 mt-0.5">
-              <Building2 className="w-3.5 h-3.5" /> {test.reportDestination}
+            <span className="text-xs font-bold text-slate-900 dark:text-white block mt-0.5">
+              {test.testCode}
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
+              {formatDate(test.submittedAt)}
             </span>
           </div>
         </div>
 
         {/* Patient & Demographics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 text-xs">
-          <div>
+        <div className="report-info-grid grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 text-xs">
+          <div className="report-field">
             <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Patient Name</span>
             <span className="font-bold text-sm text-slate-900 dark:text-white">{test.patientName}</span>
             <span className="text-[11px] font-mono text-slate-500 block">ID: {test.patientCode}</span>
           </div>
-          <div>
+          <div className="report-field">
             <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Demographics</span>
             <span className="font-semibold text-slate-900 dark:text-white">
               {patient?.gender || 'N/A'}, {patient?.age || 'N/A'} yrs
             </span>
             <span className="text-[11px] font-mono text-slate-500 block">Blood: {patient?.bloodGroup || 'N/A'}</span>
           </div>
-          <div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Specimen & Operator</span>
+          <div className="report-field">
+            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Specimen</span>
+            <span className="font-semibold text-slate-900 dark:text-white">Urine, random/midstream</span>
+            <span className="text-[11px] font-mono text-slate-500 block">Method: reagent strip RGB analysis</span>
+          </div>
+          <div className="report-field">
+            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Strip / Panel</span>
             <span className="font-semibold text-slate-900 dark:text-white">{test.stripBrand}</span>
-            <span className="text-[11px] font-mono text-slate-500 block">Tech: {test.submittedBy}</span>
+            <span className="text-[11px] font-mono text-slate-500 block">{test.panelType}</span>
+          </div>
+          <div className="report-field">
+            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Prepared For</span>
+            <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 no-print" /> {test.reportDestination}
+            </span>
+            <span className="text-[11px] font-mono text-slate-500 block">Technician: {test.submittedBy}</span>
+          </div>
+          <div className="report-field">
+            <span className="text-[10px] font-mono text-slate-400 uppercase font-bold block">Report Status</span>
+            <span className="font-semibold text-slate-900 dark:text-white">{reportSummary}</span>
+            <span className="text-[11px] font-mono text-slate-500 block">
+              Normal {normalCount} / Trace {traceFindings.length} / Abnormal {abnormalFindings.length}
+            </span>
           </div>
         </div>
 
         {/* Full Analyte Table */}
-        <div className="space-y-3">
+        <div className="report-section space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-mono uppercase font-bold text-slate-700 dark:text-slate-300 tracking-wider">
-              Urinalysis Analyte Panel ({test.analytes?.length || 10} Parameters)
+              Chemical Examination ({test.analytes?.length || 10} Parameters)
             </h3>
             <StatusBadge status={test.overallStatus} />
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="report-table-wrap overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] font-mono uppercase text-slate-400 bg-slate-50 dark:bg-slate-900">
-                  <th className="py-2.5 px-4">Analyte Parameter</th>
-                  <th className="py-2.5 px-4">Category</th>
-                  <th className="py-2.5 px-4">Result Value</th>
-                  <th className="py-2.5 px-4">Reference Range</th>
-                  <th className="py-2.5 px-4">Status Flag</th>
-                  <th className="py-2.5 px-4 text-right">Confidence</th>
+                  <th className="py-2.5 px-4">Parameter</th>
+                  <th className="py-2.5 px-4">Result</th>
+                  <th className="py-2.5 px-4">Unit</th>
+                  <th className="py-2.5 px-4">Reference Interval</th>
+                  <th className="py-2.5 px-4">Flag</th>
+                  <th className="py-2.5 px-4 text-right">QC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs font-mono">
@@ -193,11 +222,11 @@ export function ReportDetailPage() {
                     <td className="py-3 px-4 font-sans font-bold text-slate-900 dark:text-white">
                       {item.name}
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-[11px]">
-                      {item.category || 'General'}
-                    </td>
                     <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                       {item.value}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 text-[11px]">
+                      {item.unit || '-'}
                     </td>
                     <td className="py-3 px-4 text-slate-500 text-[11px]">
                       {item.refRange}
@@ -217,9 +246,30 @@ export function ReportDetailPage() {
           </div>
         </div>
 
+        <div className="report-interpretation grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-2 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs">
+            <span className="font-bold text-slate-900 dark:text-white block mb-1">
+              Impression
+            </span>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-sans">
+              {abnormalFindings.length > 0
+                ? `${abnormalFindings.map((item) => item.name).join(', ')} outside expected dipstick range. Correlate clinically and confirm with quantitative laboratory testing where indicated.`
+                : traceFindings.length > 0
+                ? `${traceFindings.map((item) => item.name).join(', ')} detected at trace/borderline level. Repeat testing may be considered if clinically relevant.`
+                : 'No abnormal chemical findings detected on this urine reagent-strip screen.'}
+            </p>
+          </div>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs">
+            <span className="font-bold text-slate-900 dark:text-white block mb-1">
+              Overall Result
+            </span>
+            <StatusBadge status={test.overallStatus} />
+          </div>
+        </div>
+
         {/* Technician Notes */}
         {test.technicianNotes && (
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs">
+          <div className="report-notes p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs">
             <span className="font-bold text-slate-900 dark:text-white block mb-1">
               Technician Observations:
             </span>
@@ -229,8 +279,31 @@ export function ReportDetailPage() {
           </div>
         )}
 
+        <div className="report-signatures grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
+              Prepared By
+            </span>
+            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1">{test.submittedBy}</p>
+            <div className="signature-line" />
+            <p className="text-[10px] text-slate-500">Pathology Technician</p>
+          </div>
+          <div>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold block">
+              Reviewed By
+            </span>
+            <p className="text-xs font-bold text-slate-900 dark:text-white mt-1">
+              {test.clinicianReview?.reviewedBy || 'Pending clinician review'}
+            </p>
+            <div className="signature-line" />
+            <p className="text-[10px] text-slate-500">
+              {test.clinicianReview?.reviewedAt ? formatDate(test.clinicianReview.reviewedAt) : 'Not yet signed'}
+            </p>
+          </div>
+        </div>
+
         {/* Audit Trail Section */}
-        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+        <div className="report-audit pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
           <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
             Audit Trail & History
           </span>
@@ -245,6 +318,10 @@ export function ReportDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="print-only report-footer">
+          This report is generated from a semi-quantitative urine reagent strip reader. Abnormal screening results should be interpreted with clinical history and confirmed by standard laboratory methods where required.
         </div>
       </div>
 

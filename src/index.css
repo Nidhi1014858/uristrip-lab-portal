@@ -20,11 +20,28 @@
   @apply bg-slate-400 dark:bg-slate-600;
 }
 
+.print-only {
+  display: none;
+}
+
 /* Print styles for clinical reports */
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
   body {
     background: white !important;
     color: black !important;
+    min-height: 297mm;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10pt;
+  }
+
+  body * {
+    visibility: hidden;
   }
   
   .no-print {
@@ -39,9 +56,228 @@
     page-break-after: always;
   }
 
-  .card-print {
-    border: 1px solid #cbd5e1 !important;
+  .clinical-report,
+  .clinical-report * {
+    visibility: visible;
+  }
+
+  .clinical-report {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #111827 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
     box-shadow: none !important;
     background: white !important;
+  }
+
+  .card-print {
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .report-letterhead {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 18px !important;
+    padding: 0 0 12px 0 !important;
+    border-bottom: 2px solid #0f766e !important;
+  }
+
+  .report-kicker {
+    display: block !important;
+    margin-bottom: 4px !important;
+    color: #0f766e !important;
+    font-size: 9pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    text-transform: uppercase !important;
+  }
+
+  .report-letterhead .font-display,
+  .report-letterhead .text-2xl {
+    color: #111827 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 20pt !important;
+    line-height: 1.1 !important;
+    font-weight: 800 !important;
+  }
+
+  .report-code-box {
+    min-width: 44mm !important;
+    padding: 8px 10px !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 0 !important;
+    background: #f9fafb !important;
+    text-align: left !important;
+  }
+
+  .report-info-grid,
+  .report-interpretation,
+  .report-signatures {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 0 !important;
+    background: white !important;
+    break-inside: avoid;
+  }
+
+  .report-field {
+    min-height: 16mm !important;
+    padding: 8px 10px !important;
+    border-right: 1px solid #d1d5db !important;
+    border-bottom: 1px solid #d1d5db !important;
+  }
+
+  .report-field:nth-child(3n) {
+    border-right: 0 !important;
+  }
+
+  .report-section {
+    break-inside: avoid;
+  }
+
+  .report-table-wrap {
+    overflow: visible !important;
+    border: 1px solid #6b7280 !important;
+    border-radius: 0 !important;
+  }
+
+  .clinical-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+
+  .clinical-report thead {
+    display: table-header-group;
+  }
+
+  .clinical-report tr {
+    break-inside: avoid;
+  }
+
+  .clinical-report th {
+    padding: 6px 7px !important;
+    border: 1px solid #6b7280 !important;
+    background: #e5e7eb !important;
+    color: #111827 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0 !important;
+  }
+
+  .clinical-report td {
+    padding: 6px 7px !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8.5pt !important;
+    vertical-align: top !important;
+  }
+
+  .clinical-report .rounded-full,
+  .clinical-report .rounded,
+  .clinical-report .rounded-xl,
+  .clinical-report .rounded-2xl,
+  .clinical-report .rounded-3xl {
+    border-radius: 0 !important;
+  }
+
+  .clinical-report .bg-rose-50,
+  .clinical-report .bg-amber-50,
+  .clinical-report .bg-emerald-50,
+  .clinical-report .bg-slate-50,
+  .clinical-report .bg-slate-100,
+  .clinical-report .dark\:bg-slate-800,
+  .clinical-report .dark\:bg-slate-900 {
+    background: white !important;
+  }
+
+  .clinical-report .text-white,
+  .clinical-report .dark\:text-white,
+  .clinical-report .dark\:text-slate-300,
+  .clinical-report .dark\:text-slate-400,
+  .clinical-report .text-slate-500,
+  .clinical-report .text-slate-600,
+  .clinical-report .text-slate-700,
+  .clinical-report .text-slate-900 {
+    color: #111827 !important;
+  }
+
+  .clinical-report h3 {
+    color: #111827 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10pt !important;
+    letter-spacing: 0 !important;
+  }
+
+  .report-interpretation {
+    grid-template-columns: 2fr 1fr !important;
+    border: 0 !important;
+    gap: 8px !important;
+  }
+
+  .report-interpretation > div,
+  .report-notes {
+    padding: 8px 10px !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 0 !important;
+    background: white !important;
+    break-inside: avoid;
+  }
+
+  .report-signatures {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    border: 0 !important;
+    gap: 18px !important;
+    padding-top: 12px !important;
+  }
+
+  .signature-line {
+    height: 14mm !important;
+    border-bottom: 1px solid #111827 !important;
+    margin: 6px 0 4px !important;
+  }
+
+  .report-audit {
+    margin-top: 4px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #9ca3af !important;
+    break-inside: avoid;
+  }
+
+  .report-audit > div {
+    max-height: none !important;
+  }
+
+  .report-audit .flex {
+    display: block !important;
+  }
+
+  .report-footer {
+    display: block !important;
+    margin-top: 10px !important;
+    padding-top: 6px !important;
+    border-top: 1px solid #d1d5db !important;
+    color: #4b5563 !important;
+    font-size: 7.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  svg,
+  .animate-ping {
+    display: none !important;
   }
 }

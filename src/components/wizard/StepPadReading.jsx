@@ -1,16 +1,22 @@
-import React from 'react';
-import { AlertCircle, CheckCircle2, Sliders } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, Database, Sliders, Upload } from 'lucide-react';
 import {
   ANALYTE_DEFINITIONS,
   PANEL_10_KEYS,
   PANEL_14_KEYS
 } from '../../services/predictionEngine';
 import { rgbToCss, rgbToHex } from '../../utils/colorUtils';
+import urineRgbDataset from '../../data/urineRgbDataset.json';
 
 export function StepPadReading({ formData, updateFormData, onNext, onPrev }) {
   const panelType = formData.panelType || '10-panel';
   const analyteKeys = panelType === '14-panel' ? PANEL_14_KEYS : PANEL_10_KEYS;
   const rgbReadings = formData.rgbReadings || {};
+  const [selectedDatasetId, setSelectedDatasetId] = useState(urineRgbDataset[0]?.id || '');
+  const selectedDataset = useMemo(
+    () => urineRgbDataset.find((sample) => sample.id === selectedDatasetId) || urineRgbDataset[0],
+    [selectedDatasetId]
+  );
   const completeCount = analyteKeys.filter((key) => {
     const rgb = rgbReadings[key];
     return rgb && ['r', 'g', 'b'].every((channel) => Number.isFinite(Number(rgb[channel])));
@@ -27,6 +33,20 @@ export function StepPadReading({ formData, updateFormData, onNext, onPrev }) {
       }
     };
     updateFormData({ rgbReadings: updated });
+  };
+
+  const handleImportDataset = () => {
+    if (!selectedDataset) return;
+
+    const importedReadings = analyteKeys.reduce((result, key) => {
+      const rgb = selectedDataset.rgbReadings[key];
+      if (rgb) {
+        result[key] = { r: rgb.r, g: rgb.g, b: rgb.b };
+      }
+      return result;
+    }, {});
+
+    updateFormData({ rgbReadings: importedReadings });
   };
 
   return (
@@ -61,14 +81,35 @@ export function StepPadReading({ formData, updateFormData, onNext, onPrev }) {
       </div>
 
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Sliders className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             RGB Triplet Inputs ({analyteKeys.length} Pads)
           </h3>
-          <span className="text-[11px] font-mono bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded border border-teal-200 dark:border-teal-800">
-            Already Extracted Data
-          </span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <Database className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <select
+                value={selectedDatasetId}
+                onChange={(event) => setSelectedDatasetId(event.target.value)}
+                className="h-9 w-full sm:w-64 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 text-xs font-medium text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-teal-500"
+              >
+                {urineRgbDataset.map((sample, index) => (
+                  <option key={sample.id} value={sample.id}>
+                    {index + 1}. {sample.label} ({sample.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleImportDataset}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-teal-600 px-3 text-xs font-bold text-white shadow-sm shadow-teal-600/20 transition-colors hover:bg-teal-700"
+            >
+              <Upload className="w-4 h-4" />
+              Import RGB
+            </button>
+          </div>
         </div>
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[520px] overflow-y-auto pr-1">
